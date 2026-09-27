@@ -11,7 +11,7 @@ const FILES = {
   state: path.join(IPC_DIR, 'ipc-state.txt'),
 };
 
-const RANKING_HOLD_MS = 15000;
+const RANKING_HOLD_MS = 10000;
 const STATE_LABELS = { idle: 'Idle', playing: 'Playing', ranking: 'Ranking' };
 
 const lastWritten = new Map();
@@ -71,7 +71,8 @@ function updateState(data) {
     return;
   }
 
-  if (status === 'playing' && stateName === 'lobby') {
+  // Leaving spectating starts the hold, whatever state we land on
+  if (status === 'playing') {
     setStatus('ranking');
     rankingTimer = setTimeout(() => {
       rankingTimer = null;
@@ -80,7 +81,7 @@ function updateState(data) {
     return;
   }
 
-  // Once ranking, keep holding until the timer fires or play resumes
+  // Once ranking, keep holding until the timer fires or spectating resumes
   if (status === 'ranking') return;
 
   setStatus('idle');
