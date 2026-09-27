@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+import * as logger from './logger.js';
 import { baseDir } from './paths.js';
 
 const IPC_DIR = path.join(baseDir, 'ipc');
@@ -24,7 +25,14 @@ function formatLine(value) {
 
 function writeIfChanged(filePath, content) {
   if (lastWritten.get(filePath) === content) return;
-  fs.writeFileSync(filePath, content);
+
+  try {
+    fs.writeFileSync(filePath, content);
+  } catch (error) {
+    logger.error(`Failed to write ${filePath}: ${error.message}`);
+    return;
+  }
+
   lastWritten.set(filePath, content);
 }
 
