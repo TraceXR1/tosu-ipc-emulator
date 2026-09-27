@@ -1,4 +1,5 @@
 import * as logger from './logger.js';
+import { RawWebSocket } from './raw-websocket.js';
 
 const RECONNECT_DELAY_MS = 1000;
 
@@ -17,7 +18,7 @@ class WebSocketManager {
   connect(path, callback) {
     if (this.closed) return;
 
-    const ws = new WebSocket(`ws://${this.host}${path}`);
+    const ws = new RawWebSocket(`ws://${this.host}${path}`);
     this.ws = ws;
 
     ws.addEventListener('open', () => logger.log('Connected to tosu'));
@@ -28,11 +29,18 @@ class WebSocketManager {
   }
 
   handleMessage(event, callback) {
-
+    let data;
     try {
-      callback(JSON.parse(event.data));
+      data = JSON.parse(event.data);
     } catch (error) {
       logger.warn(`Failed to parse a tosu message: ${error.message}`);
+      return;
+    }
+
+    try {
+      callback(data);
+    } catch (error) {
+      logger.error(`Error while handling tosu data: ${error.message}`);
     }
   }
 

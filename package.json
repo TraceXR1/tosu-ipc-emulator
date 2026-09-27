@@ -7,7 +7,7 @@
   "bin": "index.js",
   "scripts": {
     "start": "node index.js",
-    "build": "pkg . --sea"
+    "build": "rm -rf ./dist && pkg . --sea"
   },
   "engines": {
     "node": ">=22"
