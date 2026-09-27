@@ -28,7 +28,6 @@ class WebSocketManager {
   }
 
   handleMessage(event, callback) {
-    logger.debug(`tosu data: ${event.data}`);
 
     try {
       callback(JSON.parse(event.data));
