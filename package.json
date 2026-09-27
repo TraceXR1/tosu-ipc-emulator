@@ -4,10 +4,25 @@
   "private": true,
   "type": "module",
   "main": "index.js",
+  "bin": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "build": "pkg . --sea"
   },
   "engines": {
     "node": ">=22"
+  },
+  "devDependencies": {
+    "@yao-pkg/pkg": "^6.22.0"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true
+  },
+  "pkg": {
+    "targets": [
+      "node22-linux-x64",
+      "node22-win-x64"
+    ],
+    "outputPath": "dist"
   }
 }
