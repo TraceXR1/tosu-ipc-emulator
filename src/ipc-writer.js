@@ -3,6 +3,7 @@ import path from 'node:path';
 
 import * as logger from './logger.js';
 import { baseDir } from './paths.js';
+import { StateMachine } from './state-machine.js';
 
 const IPC_DIR = path.join(baseDir, 'ipc');
 const FILES = {
@@ -12,15 +13,12 @@ const FILES = {
   state: path.join(IPC_DIR, 'ipc-state.txt'),
 };
 
-const RANKING_HOLD_MS = 10000;
 const STATE_LABELS = { idle: 'Idle', playing: 'Playing', ranking: 'Ranking' };
 
 const lastWritten = new Map();
-let status = 'idle';
-let rankingTimer = null;
 
 function formatLine(value) {
-  return value === undefined || value === null ? '0' : String(value);
+  return value === undefined || value === null ? '' : String(value);
 }
 
 function writeIfChanged(filePath, content) {
@@ -58,50 +56,19 @@ function updateBeatmapAndScores(data) {
   writeIfChanged(FILES.channel, `${formatLine(data.room?.channelID)}\n`);
 }
 
-function clearRankingTimer() {
-  if (!rankingTimer) return;
-  clearTimeout(rankingTimer);
-  rankingTimer = null;
-}
-
-function setStatus(next) {
-  if (status === next) return;
-  status = next;
-  writeIfChanged(FILES.state, `${STATE_LABELS[next]}\n`);
-}
-
-function updateState(data) {
-  const stateName = data.state?.name;
-
-  if (stateName === 'spectating') {
-    clearRankingTimer();
-    setStatus('playing');
-    return;
-  }
-
-  // Leaving spectating starts the hold, whatever state we land on
-  if (status === 'playing') {
-    setStatus('ranking');
-    rankingTimer = setTimeout(() => {
-      rankingTimer = null;
-      setStatus('idle');
-    }, RANKING_HOLD_MS);
-    return;
-  }
-
-  // Once ranking, keep holding until the timer fires or spectating resumes
-  if (status === 'ranking') return;
-
-  setStatus('idle');
-}
+const stateMachine = new StateMachine((status) => writeIfChanged(FILES.state, `${STATE_LABELS[status]}\n`));
 
 function update(data) {
   updateBeatmapAndScores(data);
-  updateState(data);
+  stateMachine.update({
+    stateName: data.state?.name,
+    live: data.beatmap?.time?.live,
+    lastObject: data.beatmap?.time?.lastObject,
+  });
 }
 
 function stop() {
-  clearRankingTimer();
+  stateMachine.stop();
 }
 
 export { ensureFiles, update, stop };
