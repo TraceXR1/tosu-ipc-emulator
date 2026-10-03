@@ -19,7 +19,7 @@ jobs:
           - os: windows-latest
             build_script: build:win
             binary_name: tosu-ipc-emulator.exe
-            archive_name: tosu-ipc-emulator-win-x64.tar.gz
+            archive_name: tosu-ipc-emulator-win-x64.zip
     
     runs-on: ${{ matrix.os }}
 
