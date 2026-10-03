@@ -7,7 +7,8 @@
   "bin": "index.js",
   "scripts": {
     "start": "node index.js",
-    "build": "rm -rf ./dist && pkg . --sea"
+    "build:linux": "rm -rf ./dist/$npm_package_name && pkg . --sea --targets node22-linux-x64",
+    "build:win": "rm -rf ./dist/$npm_package_name.exe && pkg . --sea --targets node22-win-x64"
   },
   "engines": {
     "node": ">=22"
@@ -19,10 +20,6 @@
     "esbuild@0.28.2": true
   },
   "pkg": {
-    "targets": [
-      "node22-linux-x64",
-      "node22-win-x64"
-    ],
     "outputPath": "dist"
   }
 }
