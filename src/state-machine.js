@@ -1,12 +1,16 @@
 const STATUS = { IDLE: 'idle', PLAYING: 'playing', RANKING: 'ranking' };
+const PROGRESS = { UNKNOWN: 'unknown', RUNNING: 'running', ENDED: 'ended' };
 
 // The only tosu state that counts as an active match
 const ACTIVE_STATE = 'spectating';
-const RANKING_HOLD_MS = 10000;
+const RANKING_HOLD_MS = 15000;
+// Filters short glitches, like the time data resetting a moment before the state leaves spectating
+const PLAYING_DELAY_MS = 500;
 
-// Missing or invalid time data counts as a map still in progress
-function isMapEnded(live, lastObject) {
-  return Number.isFinite(live) && Number.isFinite(lastObject) && lastObject > 0 && live >= lastObject;
+// Missing or invalid time data carries no information
+function getMapProgress(live, lastObject) {
+  if (!Number.isFinite(live) || !Number.isFinite(lastObject) || lastObject <= 0) return PROGRESS.UNKNOWN;
+  return live >= lastObject ? PROGRESS.ENDED : PROGRESS.RUNNING;
 }
 
 class StateMachine {
@@ -14,6 +18,7 @@ class StateMachine {
     this.onChange = onChange;
     this.status = STATUS.IDLE;
     this.rankingTimer = null;
+    this.playingTimer = null;
   }
 
   update({ stateName, live, lastObject }) {
@@ -21,19 +26,35 @@ class StateMachine {
     if (typeof stateName !== 'string') return;
 
     if (stateName !== ACTIVE_STATE) {
-      this.clearRankingTimer();
+      this.clearTimers();
       this.setStatus(STATUS.IDLE);
       return;
     }
 
-    if (!isMapEnded(live, lastObject)) {
-      this.clearRankingTimer();
-      this.setStatus(STATUS.PLAYING);
+    const progress = getMapProgress(live, lastObject);
+    if (progress === PROGRESS.UNKNOWN) return;
+
+    if (progress === PROGRESS.RUNNING) {
+      this.schedulePlaying();
       return;
     }
 
+    // The map ended, so a pending switch to playing is no longer valid
+    this.clearPlayingTimer();
+
     // Ranking is only reachable from playing, so a finished map seen on start stays idle
     if (this.status === STATUS.PLAYING) this.startRanking();
+  }
+
+  schedulePlaying() {
+    if (this.status === STATUS.PLAYING || this.playingTimer) return;
+
+    this.playingTimer = setTimeout(() => {
+      this.playingTimer = null;
+      // Only a confirmed playing state interrupts a ranking hold
+      this.clearRankingTimer();
+      this.setStatus(STATUS.PLAYING);
+    }, PLAYING_DELAY_MS);
   }
 
   startRanking() {
@@ -50,6 +71,17 @@ class StateMachine {
     this.rankingTimer = null;
   }
 
+  clearPlayingTimer() {
+    if (!this.playingTimer) return;
+    clearTimeout(this.playingTimer);
+    this.playingTimer = null;
+  }
+
+  clearTimers() {
+    this.clearRankingTimer();
+    this.clearPlayingTimer();
+  }
+
   setStatus(next) {
     if (this.status === next) return;
     this.status = next;
@@ -57,7 +89,7 @@ class StateMachine {
   }
 
   stop() {
-    this.clearRankingTimer();
+    this.clearTimers();
   }
 }
 
